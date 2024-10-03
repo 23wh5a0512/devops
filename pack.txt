@@ -1,0 +1,1533 @@
+package com.example.mad
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.os.Bundle
+import android.view.View
+import android.widget.Button
+import android.widget.CheckBox
+import android.widget.EditText
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var emailOrNameEditText: EditText
+    private lateinit var passwordEditText: EditText
+    private lateinit var rememberMeCheckBox: CheckBox
+    private lateinit var forgotPasswordTextView: TextView
+    private lateinit var signUpPromptTextView: TextView
+    private lateinit var signInButton: Button
+    private lateinit var dbHelper: DatabaseHelper
+
+    @SuppressLint("MissingInflatedId")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        emailOrNameEditText = findViewById(R.id.editTextLoginEmail)
+        passwordEditText = findViewById(R.id.editTextLoginPassword)
+        rememberMeCheckBox = findViewById(R.id.checkBoxRememberMe)
+        forgotPasswordTextView = findViewById(R.id.textViewForgotPassword)
+        signUpPromptTextView = findViewById(R.id.textViewSignUpPrompt)
+        signInButton = findViewById(R.id.buttonSignIn)
+        dbHelper = DatabaseHelper(this)
+
+        signUpPromptTextView.setOnClickListener {
+            val intent = Intent(this, RegisterActivity::class.java)
+            startActivity(intent)
+        }
+
+        signInButton.setOnClickListener {
+            val emailOrName = emailOrNameEditText.text.toString()
+            val password = passwordEditText.text.toString()
+
+            if (dbHelper.checkUser(emailOrName, password)) {
+                Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this, DashboardActivity::class.java)
+                startActivity(intent)
+                finish()
+            } else {
+                Toast.makeText(this, "Invalid email, name or password", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun Register(view: View) {
+        val intent = Intent(this, RegisterActivity::class.java)
+        startActivity(intent)
+
+    }
+    fun Dashboard(view: View) {
+        val intent = Intent(this, DashboardActivity::class.java)
+        startActivity(intent)
+
+    }
+}
+---------------------------------------------------------------------------------------------
+package com.example.mad
+
+import android.content.Intent
+import android.os.Bundle
+import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+
+class RegisterActivity : AppCompatActivity() {
+
+    private lateinit var NameEditText: EditText
+    private lateinit var emailEditText: EditText
+    private lateinit var passwordEditText: EditText
+    private lateinit var registerButton: Button
+    private lateinit var dbHelper: DatabaseHelper
+
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_register)
+
+        NameEditText = findViewById(R.id.editTextSignUpName)
+        emailEditText = findViewById(R.id.editTextSignUpEmail)
+        passwordEditText = findViewById(R.id.editTextSignUpPassword)
+        registerButton = findViewById(R.id.buttonSignUp)
+        dbHelper = DatabaseHelper(this)
+
+        registerButton.setOnClickListener {
+            val name = NameEditText.text.toString()
+            val email = emailEditText.text.toString()
+            val password = passwordEditText.text.toString()
+
+            if (name.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty()) {
+                val success = dbHelper.addUser(email, password, name)
+                if (success) {
+                    Toast.makeText(this, "Registration successful!", Toast.LENGTH_SHORT).show()
+                    finish()
+                } else {
+                    Toast.makeText(this, "Registration failed", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun MainActivity(view: View) {
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+    }
+
+
+    }
+--------------------------------------------------------------------------------------------------
+package com.example.mad
+
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
+import com.google.android.material.bottomnavigation.BottomNavigationView
+
+class DashboardActivity : AppCompatActivity() {
+
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_dashboard)
+
+        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
+        bottomNavigationView.setOnNavigationItemSelectedListener { item ->
+            var selectedFragment: Fragment? = null
+            when (item.itemId) {
+                R.id.navigation_home -> selectedFragment = HomeFragment()
+                R.id.navigation_event -> selectedFragment = EventFragment()
+                R.id.navigation_event_info -> selectedFragment = EventInfoFragment()
+                R.id.navigation_attendee ->selectedFragment = AttendeeEventFragment()
+                R.id.navigation_seating_info -> selectedFragment = SeatingInfoFragment()
+            }
+            if (selectedFragment != null) {
+                supportFragmentManager.beginTransaction().replace(R.id.fragment_container, selectedFragment).commit()
+            }
+            true
+        }
+
+        bottomNavigationView.selectedItemId = R.id.navigation_home
+
+        setupLogoutButton()
+    }
+
+    private fun setupLogoutButton() {
+        val logoutButton = findViewById<Button>(R.id.buttonLogout)
+        logoutButton.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
+    }
+}
+
+
+------------------------------------------------------------------------------------------------------
+package com.example.mad
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+
+class HomeFragment : Fragment() {
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        // Inflate the layout for this fragment
+        return inflater.inflate(R.layout.fragment_home, container, false)
+    }
+}
+-----------------------------------------------------------------------------------------------------------------------
+package com.example.mad
+
+import android.content.Intent
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ListView
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+
+class EventFragment : Fragment() {
+
+    private lateinit var dbHelper: DatabaseHelper
+    private lateinit var eventsListView: ListView
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.fragment_event, container, false)
+
+        dbHelper = DatabaseHelper(requireContext())
+        eventsListView = view.findViewById(R.id.eventsListView)
+
+        val eventName = view.findViewById<EditText>(R.id.eventName)
+        val eventDescription = view.findViewById<EditText>(R.id.eventDescription)
+        val eventLocation = view.findViewById<EditText>(R.id.eventLocation)
+        val eventTime = view.findViewById<EditText>(R.id.eventTime)
+        val submitEventButton = view.findViewById<Button>(R.id.submitEventButton)
+
+
+        loadEvents()
+
+        submitEventButton.setOnClickListener {
+            val name = eventName.text.toString()
+            val description = eventDescription.text.toString()
+            val location = eventLocation.text.toString()
+            val time = eventTime.text.toString()
+            val success = dbHelper.addEvent(name, description, location, time)
+            if (success) {
+                Toast.makeText(requireContext(), "Event Created", Toast.LENGTH_SHORT).show()
+                loadEvents()
+            } else {
+                Toast.makeText(requireContext(), "Failed to Create Event", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        eventsListView.onItemClickListener = AdapterView.OnItemClickListener { parent, view, position, id ->
+            // Handle item click here
+            val selectedEvent = parent.getItemAtPosition(position) as Event // Adjust Event type as per your implementation
+            launchEventDetailsActivity(selectedEvent.id)
+        }
+
+        return view
+    }
+
+    private fun loadEvents() {
+        val events = dbHelper.getAllEvents()
+        val adapter = EventAdapter(requireContext(), events)
+        eventsListView.adapter = adapter
+    }
+
+    private fun launchEventDetailsActivity(eventId: Int) {
+        val intent = Intent(requireContext(), EventDetailsActivity::class.java)
+        intent.putExtra("eventId", eventId) // Pass any necessary data to EventDetailsActivity
+        startActivity(intent)
+    }
+}
+------------------------------------------------------------------------------------------
+package com.example.mad
+
+import android.os.Bundle
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+class EventDetailsActivity : AppCompatActivity() {
+    private lateinit var dbHelper: DatabaseHelper
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_event_details)
+        dbHelper = DatabaseHelper(this)
+        val eventId = intent.getIntExtra("eventId", -1)
+        val event = dbHelper.getEventDetails(eventId)
+        if (event != null) {
+            val textEventName = findViewById<TextView>(R.id.textEventName)
+            val textEventDescription = findViewById<TextView>(R.id.textEventDescription)
+            val textEventLocation = findViewById<TextView>(R.id.textEventLocation)
+            val textEventTime = findViewById<TextView>(R.id.textEventTime)
+            textEventName.text = event.name
+            textEventDescription.text = event.description
+            textEventLocation.text = event.location
+            textEventTime.text = event.time
+        }
+    }
+
+    override fun onDestroy() {
+        dbHelper.close()
+        super.onDestroy()
+    }
+}
+------------------------------------------------------------------
+package com.example.mad
+
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.BaseAdapter
+import android.widget.TextView
+
+class EventAdapter(private val context: Context, private val events: List<Event>) : BaseAdapter() {
+
+    override fun getCount(): Int {
+        return events.size
+    }
+
+    override fun getItem(position: Int): Any {
+        return events[position]
+    }
+
+    override fun getItemId(position: Int): Long {
+        return position.toLong()
+    }
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+        val view: View = convertView ?: LayoutInflater.from(context).inflate(R.layout.event_item, parent, false)
+        val event = events[position]
+
+        val eventNameTextView = view.findViewById<TextView>(R.id.eventNameTextView)
+        val eventDescriptionTextView = view.findViewById<TextView>(R.id.eventDescriptionTextView)
+
+        eventNameTextView.text = event.name
+        eventDescriptionTextView.text = event.description
+
+        return view
+    }
+}
+-------------------------------------------------------------------------------------
+package com.example.mad
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.*
+import androidx.fragment.app.Fragment
+
+class AttendeeEventFragment : Fragment() {
+
+    private lateinit var dbHelper: DatabaseHelper
+    private lateinit var attendeeListView: ListView
+    private lateinit var firstNameEditText: EditText
+    private lateinit var lastNameEditText: EditText
+    private lateinit var emailEditText: EditText
+    private lateinit var streetEditText: EditText
+    private lateinit var cityEditText: EditText
+    private lateinit var stateEditText: EditText
+    private lateinit var zipcodeEditText: EditText
+    private lateinit var mealRequestEditText: EditText
+    private lateinit var noteEditText: EditText
+    private lateinit var vipCheckBox: CheckBox
+    private lateinit var addAttendeeButton: Button
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        // Inflate the layout for this fragment
+        val view = inflater.inflate(R.layout.fragment_attendee_event, container, false)
+
+        // Initialize UI components
+        attendeeListView = view.findViewById(R.id.attendee_list)
+        firstNameEditText = view.findViewById(R.id.first_name)
+        lastNameEditText = view.findViewById(R.id.last_name)
+        emailEditText = view.findViewById(R.id.email)
+        streetEditText = view.findViewById(R.id.street)
+        cityEditText = view.findViewById(R.id.city)
+        stateEditText = view.findViewById(R.id.state)
+        zipcodeEditText = view.findViewById(R.id.zipcode)
+        mealRequestEditText = view.findViewById(R.id.meal_request)
+        noteEditText = view.findViewById(R.id.note)
+        vipCheckBox = view.findViewById(R.id.vip)
+        addAttendeeButton = view.findViewById(R.id.add_attendee)
+
+        dbHelper = DatabaseHelper(requireContext())
+
+        displayAttendees()
+
+        addAttendeeButton.setOnClickListener {
+            addAttendee()
+        }
+
+        attendeeListView.setOnItemClickListener { _, _, position, _ ->
+            val selectedAttendee = attendeeListView.getItemAtPosition(position) as Attendee
+            loadAttendeeDetails(selectedAttendee)
+        }
+
+        return view
+    }
+
+     private fun displayAttendees() {
+        val attendees = dbHelper.getAllAttendees().map { "${it.firstName} ${it.lastName}," +
+             " ${it.email}" }
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, attendees)
+        attendeeListView.adapter = adapter
+    }
+
+
+    private fun addAttendee() {
+        val firstName = firstNameEditText.text.toString()
+        val lastName = lastNameEditText.text.toString()
+        val email = emailEditText.text.toString()
+        val street = streetEditText.text.toString()
+        val city = cityEditText.text.toString()
+        val state = stateEditText.text.toString()
+        val zipcode = zipcodeEditText.text.toString()
+        val mealRequest = mealRequestEditText.text.toString()
+        val note = noteEditText.text.toString()
+        val vip = vipCheckBox.isChecked
+
+        if (dbHelper.addAttendee(firstName, lastName, email, street, city, state, zipcode,
+                vip, mealRequest, note)) {
+            Toast.makeText(requireContext(), "Attendee added successfully", Toast.LENGTH_SHORT).show()
+            displayAttendees()
+            clearForm()
+        } else {
+            Toast.makeText(requireContext(), "Failed to add attendee", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun loadAttendeeDetails(attendee: Attendee) {
+        firstNameEditText.setText(attendee.firstName)
+        lastNameEditText.setText(attendee.lastName)
+        emailEditText.setText(attendee.email)
+        streetEditText.setText(attendee.street)
+        cityEditText.setText(attendee.city)
+        stateEditText.setText(attendee.state)
+        zipcodeEditText.setText(attendee.zipcode)
+        mealRequestEditText.setText(attendee.mealRequest)
+        noteEditText.setText(attendee.note)
+        vipCheckBox.isChecked = attendee.vip
+    }
+
+    private fun clearForm() {
+        firstNameEditText.text.clear()
+        lastNameEditText.text.clear()
+        emailEditText.text.clear()
+        streetEditText.text.clear()
+        cityEditText.text.clear()
+        stateEditText.text.clear()
+        zipcodeEditText.text.clear()
+        mealRequestEditText.text.clear()
+        noteEditText.text.clear()
+        vipCheckBox.isChecked = false
+    }
+}
+--------------------------------------------------------------------------
+package com.example.mad
+
+import android.annotation.SuppressLint
+import android.content.ContentValues
+import android.content.Intent
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
+
+class SeatingInfoFragment : Fragment() {
+
+    private lateinit var dbHelper: DatabaseHelper
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        return inflater.inflate(R.layout.fragment_seating_info, container, false)
+    }
+
+    @SuppressLint("MissingInflatedId")
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        dbHelper = DatabaseHelper(requireContext())
+
+        val btnCreateTable: Button = view.findViewById(R.id.btnCreateTable)
+        btnCreateTable.setOnClickListener {
+            showCreateTableDialog()
+        }
+
+        val btnViewTableAssignments: Button = view.findViewById(R.id.btnViewTableAssignments)
+        btnViewTableAssignments.setOnClickListener {
+            val intent = Intent(requireContext(), AllAssignmentsActivity::class.java)
+            startActivity(intent)
+        }
+
+        loadTables()
+    }
+
+    private fun showCreateTableDialog() {
+        val builder = AlertDialog.Builder(requireContext())
+        builder.setTitle("Create Table")
+
+        val layout = LinearLayout(requireContext())
+        layout.orientation = LinearLayout.VERTICAL
+
+        val inputName = EditText(requireContext())
+        inputName.hint = "Table Name"
+        layout.addView(inputName)
+
+        val inputMaxSeats = EditText(requireContext())
+        inputMaxSeats.hint = "Max Seats"
+        layout.addView(inputMaxSeats)
+
+        builder.setView(layout)
+
+        builder.setPositiveButton("Create") { dialog, _ ->
+            val name = inputName.text.toString()
+            val maxSeats = inputMaxSeats.text.toString().toIntOrNull()
+
+            if (name.isNotBlank() && maxSeats != null && maxSeats > 0) {
+                createTable(name, maxSeats)
+                dialog.dismiss()
+            } else {
+                // Show error message
+            }
+        }
+        builder.setNegativeButton("Cancel") { dialog, _ -> dialog.cancel() }
+
+        builder.show()
+    }
+
+    private fun createTable(name: String, maxSeats: Int) {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put("name", name)
+            put("max_seats", maxSeats)
+        }
+        db.insert(DatabaseHelper.TABLES_TABLE, null, values)
+        loadTables()
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun loadTables() {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            DatabaseHelper.TABLES_TABLE,
+            arrayOf("id", "name", "max_seats"),
+            null, null, null, null, null
+        )
+
+        val tableList: LinearLayout? = view?.findViewById(R.id.tableList)
+        tableList?.removeAllViews()
+
+        while (cursor.moveToNext()) {
+            val tableId = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+            val tableName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+            val maxSeats = cursor.getInt(cursor.getColumnIndexOrThrow("max_seats"))
+
+            val textView = TextView(requireContext()).apply {
+                text = "Table Name: $tableName\nMax-Seats: $maxSeats"
+                setOnClickListener {
+                    val intent = Intent(requireContext(), AssignmentActivity::class.java).apply {
+                        putExtra("TABLE_ID", tableId)
+                        putExtra("TABLE_NAME", tableName)
+                    }
+                    startActivity(intent)
+                }
+            }
+            tableList?.addView(textView)
+        }
+        cursor.close()
+    }
+}
+---------------------------------------
+package com.example.mad
+import android.annotation.SuppressLint
+import android.content.ContentValues
+import android.os.Bundle
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+
+class AssignmentActivity : AppCompatActivity() {
+
+    private lateinit var dbHelper: DatabaseHelper
+    private var tableId: Int = -1
+    private var tableName: String? = null
+    private var maxSeats: Int = 0
+
+    @SuppressLint("MissingInflatedId")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_tableassignments)
+
+        dbHelper = DatabaseHelper(this)
+
+        tableId = intent.getIntExtra("TABLE_ID", -1)
+        tableName = intent.getStringExtra("TABLE_NAME")
+        maxSeats = getTableMaxSeats(tableId)
+
+        val btnCreateAssignments: Button = findViewById(R.id.btnCreateAssignments)
+        btnCreateAssignments.setOnClickListener {
+            showAddAssignmentDialog()
+        }
+
+        val btnClearAssignments: Button = findViewById(R.id.btnClearAssignments)
+        btnClearAssignments.setOnClickListener {
+            clearAssignments()
+        }
+
+        loadAssignments()
+    }
+
+    private fun getTableMaxSeats(tableId: Int): Int {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            DatabaseHelper.TABLES_TABLE,
+            arrayOf("max_seats"),
+            "id=?",
+            arrayOf(tableId.toString()),
+            null, null, null
+        )
+        var maxSeats = 0
+        if (cursor.moveToFirst()) {
+            maxSeats = cursor.getInt(cursor.getColumnIndexOrThrow("max_seats"))
+        }
+        cursor.close()
+        return maxSeats
+    }
+
+    private fun showAddAssignmentDialog() {
+        val currentAssignments = getCurrentAssignmentCount()
+        if (currentAssignments >= maxSeats) {
+            showAlert("Table is full", "No more seats available at this table.")
+            return
+        }
+
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Add Assignment")
+
+        val inputName = EditText(this)
+        inputName.hint = "Name"
+        builder.setView(inputName)
+
+        builder.setPositiveButton("Add") { dialog, _ ->
+            val name = inputName.text.toString()
+            if (name.isNotBlank()) {
+                addAssignment(name)
+                dialog.dismiss()
+            }
+        }
+        builder.setNegativeButton("Cancel") { dialog, _ -> dialog.cancel() }
+
+        builder.show()
+    }
+
+    private fun getCurrentAssignmentCount(): Int {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            DatabaseHelper.ASSIGNMENTS_TABLE,
+            arrayOf("id"),
+            "table_id=?",
+            arrayOf(tableId.toString()),
+            null, null, null
+        )
+        val count = cursor.count
+        cursor.close()
+        return count
+    }
+
+    private fun addAssignment(name: String) {
+        val db = dbHelper.writableDatabase
+        val values = ContentValues().apply {
+            put("table_id", tableId)
+            put("name", name)
+        }
+        db.insert(DatabaseHelper.ASSIGNMENTS_TABLE, null, values)
+        loadAssignments()
+    }
+
+    private fun clearAssignments() {
+        val db = dbHelper.writableDatabase
+        db.delete(DatabaseHelper.ASSIGNMENTS_TABLE, "table_id=?", arrayOf(tableId.toString()))
+        loadAssignments()
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun loadAssignments() {
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            DatabaseHelper.ASSIGNMENTS_TABLE,
+            arrayOf("name"),
+            "table_id=?",
+            arrayOf(tableId.toString()),
+            null, null, null
+        )
+
+        val assignmentList: LinearLayout = findViewById(R.id.assignmentList)
+        assignmentList.removeAllViews()
+
+        val names = mutableListOf<String>()
+        while (cursor.moveToNext()) {
+            val name = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+            names.add(name)
+        }
+        cursor.close()
+
+        val textView = TextView(this).apply {
+            text = "Table $tableName - ${names.size}/$maxSeats Seats\n${names.joinToString("\n")}"
+        }
+        assignmentList.addView(textView)
+    }
+
+    private fun showAlert(title: String, message: String) {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle(title)
+        builder.setMessage(message)
+        builder.setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+        builder.show()
+    }
+}
+
+---------------------------------------------------------------------------------------------
+package com.example.mad
+import android.annotation.SuppressLint
+import android.content.ContentValues
+import android.os.Bundle
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+
+class AllAssignmentsActivity : AppCompatActivity() {
+
+    private lateinit var dbHelper: DatabaseHelper
+
+    @SuppressLint("MissingInflatedId")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_allassignments)
+
+        dbHelper = DatabaseHelper(this)
+
+        val btnCreateNewAssignments: Button = findViewById(R.id.btnCreateNewAssignments)
+        btnCreateNewAssignments.setOnClickListener {
+            // Implement the functionality for creating new seating assignments if needed
+        }
+
+        val btnClearAllAssignments: Button = findViewById(R.id.btnClearAllAssignments)
+        btnClearAllAssignments.setOnClickListener {
+            clearAllAssignments()
+        }
+
+        loadAllAssignments()
+    }
+
+    private fun clearAllAssignments() {
+        val db = dbHelper.writableDatabase
+        db.delete(DatabaseHelper.ASSIGNMENTS_TABLE, null, null)
+        loadAllAssignments()
+    }
+
+    private fun loadAllAssignments() {
+        val db = dbHelper.readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT t.name as table_name, t.max_seats, a.name as assignment_name FROM ${DatabaseHelper.TABLES_TABLE} t LEFT JOIN ${DatabaseHelper.ASSIGNMENTS_TABLE} a ON t.id = a.table_id ORDER BY t.name",
+            null
+        )
+
+        val allAssignmentsList: LinearLayout = findViewById(R.id.allAssignmentsList)
+        allAssignmentsList.removeAllViews()
+
+        var currentTableName: String? = null
+        var currentTableMaxSeats: Int = 0
+        val currentAssignments = mutableListOf<String>()
+
+        while (cursor.moveToNext()) {
+            val tableName = cursor.getString(cursor.getColumnIndexOrThrow("table_name"))
+            val maxSeats = cursor.getInt(cursor.getColumnIndexOrThrow("max_seats"))
+            val assignmentName = cursor.getString(cursor.getColumnIndexOrThrow("assignment_name"))
+
+            if (currentTableName == null || currentTableName != tableName) {
+                if (currentTableName != null) {
+                    addTableAssignmentsToView(currentTableName, currentTableMaxSeats, currentAssignments)
+                }
+                currentTableName = tableName
+                currentTableMaxSeats = maxSeats
+                currentAssignments.clear()
+            }
+
+            if (!assignmentName.isNullOrBlank()) {
+                currentAssignments.add(assignmentName)
+            }
+        }
+
+        cursor.close()
+
+        if (currentTableName != null) {
+            addTableAssignmentsToView(currentTableName, currentTableMaxSeats, currentAssignments)
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun addTableAssignmentsToView(tableName: String, maxSeats: Int, assignments: List<String>) {
+        val allAssignmentsList: LinearLayout = findViewById(R.id.allAssignmentsList)
+        val textView = TextView(this).apply {
+            text = "Table $tableName - ${assignments.size}/$maxSeats Seats\n${assignments.joinToString("\n")}"
+        }
+        allAssignmentsList.addView(textView)
+    }
+}
+
+------------------------------------------------------------------------------------------------------------
+package com.example.mad
+
+import android.annotation.SuppressLint
+import android.content.ContentValues
+import android.content.Context
+import android.database.Cursor
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+
+class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+
+    companion object {
+        private const val DATABASE_NAME = "Seater.db"
+        private const val DATABASE_VERSION = 2  // Incremented version
+
+        // Table Names
+        private const val TABLE_USERS = "users"
+        private const val TABLE_EVENTS = "events"
+        private const val TABLE_ATTENDEES = "attendees"
+        const val TABLES_TABLE = "tables"
+        const val ASSIGNMENTS_TABLE = "assignments"
+
+        // Common column names
+        private const val KEY_ID = "id"
+
+        // USERS Table - column names
+        private const val KEY_USER_EMAIL = "email"
+        private const val KEY_USER_PASSWORD = "password"
+        private const val KEY_USER_NAME = "name"
+
+        // EVENTS Table - column names
+        private const val KEY_EVENT_NAME = "name"
+        private const val KEY_EVENT_DESCRIPTION = "description"
+        private const val KEY_EVENT_LOCATION = "location"
+        private const val KEY_EVENT_TIME = "time"
+
+        // ATTENDEES Table - column names
+        private const val KEY_ATTENDEE_FIRST_NAME = "first_name"
+        private const val KEY_ATTENDEE_LAST_NAME = "last_name"
+        private const val KEY_ATTENDEE_EMAIL = "email"
+        private const val KEY_ATTENDEE_STREET = "street"
+        private const val KEY_ATTENDEE_CITY = "city"
+        private const val KEY_ATTENDEE_STATE = "state"
+        private const val KEY_ATTENDEE_ZIPCODE = "zipcode"
+        private const val KEY_ATTENDEE_VIP = "vip"
+        private const val KEY_ATTENDEE_MEAL_REQUEST = "meal_request"
+        private const val KEY_ATTENDEE_NOTE = "note"
+
+        // TABLES Table - column names
+        private const val KEY_TABLE_NAME = "name"
+        private const val KEY_TABLE_MAX_SEATS = "max_seats"
+
+        // ASSIGNMENTS Table - column names
+        private const val KEY_ASSIGNMENT_TABLE_ID = "table_id"
+        private const val KEY_ASSIGNMENT_NAME = "name"
+    }
+
+    override fun onCreate(db: SQLiteDatabase) {
+        val createTableUsers = ("CREATE TABLE $TABLE_USERS ("
+                + "$KEY_ID INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + "$KEY_USER_EMAIL TEXT,"
+                + "$KEY_USER_PASSWORD TEXT,"
+                + "$KEY_USER_NAME TEXT)")
+
+        val createTableEvents = ("CREATE TABLE $TABLE_EVENTS ("
+                + "$KEY_ID INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + "$KEY_EVENT_NAME TEXT,"
+                + "$KEY_EVENT_DESCRIPTION TEXT,"
+                + "$KEY_EVENT_LOCATION TEXT,"
+                + "$KEY_EVENT_TIME TEXT)")
+
+        val createTableAttendees = ("CREATE TABLE $TABLE_ATTENDEES ("
+                + "$KEY_ID INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + "$KEY_ATTENDEE_FIRST_NAME TEXT,"
+                + "$KEY_ATTENDEE_LAST_NAME TEXT,"
+                + "$KEY_ATTENDEE_EMAIL TEXT,"
+                + "$KEY_ATTENDEE_STREET TEXT,"
+                + "$KEY_ATTENDEE_CITY TEXT,"
+                + "$KEY_ATTENDEE_STATE TEXT,"
+                + "$KEY_ATTENDEE_ZIPCODE TEXT,"
+                + "$KEY_ATTENDEE_VIP INTEGER,"
+                + "$KEY_ATTENDEE_MEAL_REQUEST TEXT,"
+                + "$KEY_ATTENDEE_NOTE TEXT)")
+
+        val createTablesTable = ("CREATE TABLE $TABLES_TABLE ("
+                + "$KEY_ID INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + "$KEY_TABLE_NAME TEXT,"
+                + "$KEY_TABLE_MAX_SEATS INTEGER)")
+
+        val createAssignmentsTable = ("CREATE TABLE $ASSIGNMENTS_TABLE ("
+                + "$KEY_ID INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + "$KEY_ASSIGNMENT_TABLE_ID INTEGER,"
+                + "$KEY_ASSIGNMENT_NAME TEXT,"
+                + "FOREIGN KEY ($KEY_ASSIGNMENT_TABLE_ID) REFERENCES $TABLES_TABLE($KEY_ID))")
+
+        db.execSQL(createTableUsers)
+        db.execSQL(createTableEvents)
+        db.execSQL(createTableAttendees)
+        db.execSQL(createTablesTable)
+        db.execSQL(createAssignmentsTable)
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_USERS")
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_EVENTS")
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_ATTENDEES")
+        db.execSQL("DROP TABLE IF EXISTS $TABLES_TABLE")
+        db.execSQL("DROP TABLE IF EXISTS $ASSIGNMENTS_TABLE")
+        onCreate(db)
+    }
+
+    // Users methods
+
+    fun addUser(email: String, password: String, name: String): Boolean {
+        val db = this.writableDatabase
+        val values = ContentValues()
+        values.put(KEY_USER_EMAIL, email)
+        values.put(KEY_USER_PASSWORD, password)
+        values.put(KEY_USER_NAME, name)
+
+        val result = db.insert(TABLE_USERS, null, values)
+        db.close()
+        return result != -1L
+    }
+
+    fun checkUser(email: String, password: String): Boolean {
+        val db = this.readableDatabase
+        val query = "SELECT * FROM $TABLE_USERS WHERE $KEY_USER_EMAIL = ? AND $KEY_USER_PASSWORD = ?"
+        val cursor = db.rawQuery(query, arrayOf(email, password))
+
+        val isValid = cursor.count > 0
+        cursor.close()
+        db.close()
+        return isValid
+    }
+
+    // Events methods
+
+    fun getAllEvents(): List<Event> {
+        val eventsList = ArrayList<Event>()
+        val selectQuery = "SELECT * FROM $TABLE_EVENTS"
+        val db = this.writableDatabase
+        val cursor = db.rawQuery(selectQuery, null)
+
+        if (cursor.moveToFirst()) {
+            do {
+                val event = Event(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(KEY_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(KEY_EVENT_NAME)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(KEY_EVENT_DESCRIPTION)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(KEY_EVENT_LOCATION)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(KEY_EVENT_TIME))
+                )
+                eventsList.add(event)
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        db.close()
+        return eventsList
+    }
+
+    fun addEvent(name: String, description: String, location: String, time: String): Boolean {
+        val db = this.writableDatabase
+        val values = ContentValues()
+        values.put(KEY_EVENT_NAME, name)
+        values.put(KEY_EVENT_DESCRIPTION, description)
+        values.put(KEY_EVENT_LOCATION, location)
+        values.put(KEY_EVENT_TIME, time)
+
+        val result = db.insert(TABLE_EVENTS, null, values)
+        db.close()
+        return result != -1L
+    }
+
+    fun getEventDetails(eventId: Int): Event? {
+        val db = this.readableDatabase
+        var event: Event? = null
+        val selectQuery = "SELECT * FROM $TABLE_EVENTS WHERE $KEY_ID = ?"
+        val cursor = db.rawQuery(selectQuery, arrayOf(eventId.toString()))
+
+        if (cursor.moveToFirst()) {
+            event = Event(
+                cursor.getInt(cursor.getColumnIndexOrThrow(KEY_ID)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_EVENT_NAME)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_EVENT_DESCRIPTION)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_EVENT_LOCATION)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_EVENT_TIME))
+            )
+        }
+
+        cursor.close()
+        db.close()
+        return event
+    }
+
+    // Attendees methods
+
+    fun addAttendee(
+        firstName: String,
+        lastName: String,
+        email: String,
+        street: String,
+        city: String,
+        state: String,
+        zipcode: String,
+        vip: Boolean,
+        mealRequest: String,
+        note: String
+    ): Boolean {
+        val db = this.writableDatabase
+        val values = ContentValues()
+        values.put(KEY_ATTENDEE_FIRST_NAME, firstName)
+        values.put(KEY_ATTENDEE_LAST_NAME, lastName)
+        values.put(KEY_ATTENDEE_EMAIL, email)
+        values.put(KEY_ATTENDEE_STREET, street)
+        values.put(KEY_ATTENDEE_CITY, city)
+        values.put(KEY_ATTENDEE_STATE, state)
+        values.put(KEY_ATTENDEE_ZIPCODE, zipcode)
+        values.put(KEY_ATTENDEE_VIP, if (vip) 1 else 0)
+        values.put(KEY_ATTENDEE_MEAL_REQUEST, mealRequest)
+        values.put(KEY_ATTENDEE_NOTE, note)
+
+        val result = db.insert(TABLE_ATTENDEES, null, values)
+        db.close()
+        return result != -1L
+    }
+
+    @SuppressLint("Range")
+    fun getAllAttendees(): List<Attendee> {
+        val attendeesList = ArrayList<Attendee>()
+        val selectQuery = "SELECT * FROM $TABLE_ATTENDEES"
+
+        val db = this.readableDatabase
+        val cursor = db.rawQuery(selectQuery, null)
+
+        if (cursor.moveToFirst()) {
+            do {
+                val attendee = Attendee(
+                    cursor.getInt(cursor.getColumnIndex(KEY_ID)),
+                    cursor.getString(cursor.getColumnIndex(KEY_ATTENDEE_FIRST_NAME)),
+                    cursor.getString(cursor.getColumnIndex(KEY_ATTENDEE_LAST_NAME)),
+                    cursor.getString(cursor.getColumnIndex(KEY_ATTENDEE_EMAIL)),
+                    cursor.getString(cursor.getColumnIndex(KEY_ATTENDEE_STREET)),
+                    cursor.getString(cursor.getColumnIndex(KEY_ATTENDEE_CITY)),
+                    cursor.getString(cursor.getColumnIndex(KEY_ATTENDEE_STATE)),
+                    cursor.getString(cursor.getColumnIndex(KEY_ATTENDEE_ZIPCODE)),
+                    cursor.getInt(cursor.getColumnIndex(KEY_ATTENDEE_VIP)) == 1,
+                    cursor.getString(cursor.getColumnIndex(KEY_ATTENDEE_MEAL_REQUEST)),
+                    cursor.getString(cursor.getColumnIndex(KEY_ATTENDEE_NOTE))
+                )
+                attendeesList.add(attendee)
+            } while (cursor.moveToNext())
+        }
+
+        cursor.close()
+        db.close()
+        return attendeesList
+    }
+
+    fun deleteAttendee(attendeeId: Int): Boolean {
+        val db = this.writableDatabase
+        val result = db.delete(TABLE_ATTENDEES, "$KEY_ID=?", arrayOf(attendeeId.toString()))
+        db.close()
+        return result > 0
+    }
+
+    fun getAttendeeByEmail(email: String): Attendee? {
+        val db = this.readableDatabase
+        var attendee: Attendee? = null
+        val selectQuery = "SELECT * FROM $TABLE_ATTENDEES WHERE $KEY_ATTENDEE_EMAIL = ?"
+        val cursor = db.rawQuery(selectQuery, arrayOf(email))
+
+        if (cursor.moveToFirst()) {
+            attendee = Attendee(
+                cursor.getInt(cursor.getColumnIndexOrThrow(KEY_ID)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_FIRST_NAME)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_LAST_NAME)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_EMAIL)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_STREET)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_CITY)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_STATE)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_ZIPCODE)),
+                cursor.getInt(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_VIP)) == 1,
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_MEAL_REQUEST)),
+                cursor.getString(cursor.getColumnIndexOrThrow(KEY_ATTENDEE_NOTE))
+            )
+        }
+
+        cursor.close()
+        db.close()
+        return attendee
+    }
+
+    // Tables methods
+
+    fun addTable(name: String, maxSeats: Int): Boolean {
+        val db = this.writableDatabase
+        val values = ContentValues()
+        values.put(KEY_TABLE_NAME, name)
+        values.put(KEY_TABLE_MAX_SEATS, maxSeats)
+
+        val result = db.insert(TABLES_TABLE, null, values)
+        db.close()
+        return result != -1L
+    }
+
+    fun getAllTables(): List<Table> {
+        val tablesList = ArrayList<Table>()
+        val selectQuery = "SELECT * FROM $TABLES_TABLE"
+        val db = this.writableDatabase
+        val cursor = db.rawQuery(selectQuery, null)
+
+        if (cursor.moveToFirst()) {
+            do {
+                val table = Table(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(KEY_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(KEY_TABLE_NAME)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(KEY_TABLE_MAX_SEATS))
+                )
+                tablesList.add(table)
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        db.close()
+        return tablesList
+    }
+
+    // Assignments methods
+
+    fun addAssignment(tableId: Int, name: String): Boolean {
+        val db = this.writableDatabase
+        val values = ContentValues()
+        values.put(KEY_ASSIGNMENT_TABLE_ID, tableId)
+        values.put(KEY_ASSIGNMENT_NAME, name)
+
+        val result = db.insert(ASSIGNMENTS_TABLE, null, values)
+        db.close()
+        return result != -1L
+    }
+
+    fun getAllAssignments(): List<Assignment> {
+        val assignmentsList = ArrayList<Assignment>()
+        val selectQuery = "SELECT * FROM $ASSIGNMENTS_TABLE"
+        val db = this.writableDatabase
+        val cursor = db.rawQuery(selectQuery, null)
+
+        if (cursor.moveToFirst()) {
+            do {
+                val assignment = Assignment(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(KEY_ID)),
+                    cursor.getInt(cursor.getColumnIndexOrThrow(KEY_ASSIGNMENT_TABLE_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(KEY_ASSIGNMENT_NAME))
+                )
+                assignmentsList.add(assignment)
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        db.close()
+        return assignmentsList
+    }
+
+    fun getEventById(eventId: Int): Event? {
+        val db = this.readableDatabase
+        var event: Event? = null
+
+        val cursor = db.query(
+            "events", // Table name
+            null, // Columns to return (null returns all columns)
+            "id = ?", // Where clause
+            arrayOf(eventId.toString()), // Where clause arguments
+            null, // Group by
+            null, // Having
+            null // Order by
+        )
+
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+                val name = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+                val description = cursor.getString(cursor.getColumnIndexOrThrow("description"))
+                val location = cursor.getString(cursor.getColumnIndexOrThrow("location"))
+                val time = cursor.getString(cursor.getColumnIndexOrThrow("time"))
+
+                event = Event(id, name, description, location, time)
+            }
+            cursor.close()
+        }
+        return event
+    }
+
+
+    // Other methods for tables and assignments as needed...
+
+}
+
+data class User(
+    val id: Int,
+    val email: String,
+    val password: String,
+    val name: String
+)
+
+
+
+data class Attendee(
+    val id: Int,
+    val firstName: String,
+    val lastName: String,
+    val email: String,
+    val street: String,
+    val city: String,
+    val state: String,
+    val zipcode: String,
+    val vip: Boolean,
+    val mealRequest: String,
+    val note: String
+)
+
+data class Table(
+    val id: Int,
+    val name: String,
+    val maxSeats: Int
+)
+
+data class Assignment(
+    val id: Int,
+    val tableId: Int,
+    val name: String
+)
+now i want some modifications in this like i want two types of logins like login as organizer and login as attendee if login as organixer he can see this all if he is logging in like attendee he only visible for only eventinfofragment
+in event fragment i want eventdetails that i clicked in your events .and give sqllitedatabase
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".DashboardActivity">
+
+    <Button
+        android:id="@+id/buttonLogout"
+        android:layout_width="118dp"
+        android:layout_height="35dp"
+        android:text="@string/_logout_"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragment_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@id/buttonLogout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigationView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="?android:attr/windowBackground"
+        app:menu="@menu/bottom_navigation_menu"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+</androidx.constraintlayout.widget.ConstraintLayout>
+----------------------------------------------------------------------------------------------------------
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_home"
+        android:icon="@drawable/ic_home"
+        android:title="@string/home" />
+    <item
+        android:id="@+id/navigation_event"
+        android:icon="@drawable/ic_event"
+        android:title="@string/event" />
+    <item
+        android:id="@+id/navigation_event_info"
+        android:icon="@drawable/ic_event_info"
+        android:title="@string/event_info" />
+    <item
+        android:id="@+id/navigation_attendee"
+        android:icon="@drawable/ic_attendee"
+        android:title="@string/attendee" />
+    <item
+        android:id="@+id/navigation_seating_info"
+        android:icon="@drawable/ic_seating_info"
+        android:title="@string/seating_info" />
+</menu>
+------------------------------------------------
+Here is the full code with the suggested changes:
+
+EventFragment.kt
+
+package com.example.mad
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ListView
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+
+class EventFragment : Fragment() {
+    private lateinit var dbHelper: DatabaseHelper
+    private lateinit var eventsListView: ListView
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.fragment_event, container, false)
+        dbHelper = DatabaseHelper(requireContext())
+        eventsListView = view.findViewById(R.id.eventsListView)
+
+        val eventName = view.findViewById<EditText>(R.id.eventName)
+        val eventDescription = view.findViewById<EditText>(R.id.eventDescription)
+        val eventLocation = view.findViewById<EditText>(R.id.eventLocation)
+        val eventTime = view.findViewById<EditText>(R.id.eventTime)
+        val submitEventButton = view.findViewById<Button>(R.id.submitEventButton)
+
+        loadEvents()
+
+        submitEventButton.setOnClickListener {
+            val name = eventName.text.toString()
+            val description = eventDescription.text.toString()
+            val location = eventLocation.text.toString()
+            val time = eventTime.text.toString()
+            val success = dbHelper.addEvent(name, description, location, time)
+            if (success) {
+                Toast.makeText(requireContext(), "Event Created", Toast.LENGTH_SHORT).show()
+                loadEvents()
+            } else {
+                Toast.makeText(requireContext(), "Failed to Create Event", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        eventsListView.onItemClickListener = AdapterView.OnItemClickListener { parent, view, position, id ->
+            val selectedEvent = parent.getItemAtPosition(position) as Event
+            val eventInfoFragment = EventInfoFragment()
+            val bundle = Bundle()
+            bundle.putInt("eventId", selectedEvent.id)
+            eventInfoFragment.arguments = bundle
+
+            // Start EventDetailsActivity
+            val intent = Intent(requireContext(), EventDetailsActivity::class.java)
+            intent.putExtra("eventId", selectedEvent.id)
+            requireContext().startActivity(intent)
+
+            // Replace fragment
+            requireActivity().supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, eventInfoFragment)
+                .addToBackStack(null)
+                .commit()
+        }
+
+        return view
+    }
+
+    private fun loadEvents() {
+        val events = dbHelper.getAllEvents()
+        val adapter = EventAdapter(requireContext(), events)
+        eventsListView.adapter = adapter
+    }
+}
+
+EventDetailsActivity.kt
+
+package com.example.mad
+
+import android.os.Bundle
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+
+class EventDetailsActivity : AppCompatActivity() {
+    private lateinit var dbHelper: DatabaseHelper
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_event_details)
+        dbHelper = DatabaseHelper(this)
+        val eventId = intent.getIntExtra("eventId", -1)
+        val event = dbHelper.getEventDetails(eventId)
+        if (event != null) {
+            val textEventName = findViewById<TextView>(R.id.textEventName)
+            val textEventDescription = findViewById<TextView>(R.id.textEventDescription)
+            val textEventLocation = findViewById<TextView>(R.id.textEventLocation)
+            val textEventTime = findViewById<TextView>(R.id.textEventTime)
+            textEventName.text = event.name
+            textEventDescription.text = event.description
+            textEventLocation.text = event.location
+            textEventTime.text = event.time
+        }
+    }
+
+    override fun onDestroy() {
+        dbHelper.close()
+        super.onDestroy()
+    }
+}
+
+EventInfoFragment.kt
+
+package com.example.mad
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.fragment.app.Fragment
+
+class EventInfoFragment : Fragment() {
+    private lateinit var dbHelper: DatabaseHelper
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ):
+There was a problem generating a response. Please try again later.
+To display the attendee list in the EventInfoFragment, you can follow these steps:
+
+1. Add a ListView to the fragment_event_info.xml layout file:
+
+<ListView
+    android:id="@+id/attendee_list"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="16dp"/>
+
+1. In the EventInfoFragment, add a reference to the ListView:
+
+private lateinit var attendeeListView: ListView
+
+1. Initialize the ListView in the onCreateView method:
+
+attendeeListView = view.findViewById(R.id.attendee_list)
+
+1. Create a method to display the attendee list:
+
+private fun displayAttendees(eventId: Int) {
+    val attendees = dbHelper.getAttendeesForEvent(eventId)
+    val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, attendees)
+    attendeeListView.adapter = adapter
+}
+
+1. Call the displayAttendees method in the onCreateView method, passing the event ID as an argument:
+
+displayAttendees(eventId)
+
+1. Make sure to update the dbHelper class to include a method getAttendeesForEvent(eventId: Int) to retrieve the attendees for a specific event.
+
+By following these steps, you should be able to display the attendee list in the EventInfoFragment below the event details.
+
+Here's the updated EventInfoFragment code:
+
+package com.example.mad
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ListView
+import android.widget.TextView
+import androidx.fragment.app.Fragment
+
+class EventInfoFragment : Fragment() {
+    private lateinit var dbHelper: DatabaseHelper
+    private lateinit var textEventName: TextView
+    private lateinit var textEventDescription: TextView
+    private lateinit var textEventLocation: TextView
+    private lateinit var textEventTime: TextView
+    private lateinit var attendeeListView: ListView
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.fragment_event_info, container, false)
+        dbHelper = DatabaseHelper(requireContext())
+        textEventName = view.findViewById(R.id.textEventName)
+        textEventDescription = view.findViewById(R.id.textEventDescription)
+        textEventLocation = view.findViewById(R.id.textEventLocation)
+        textEventTime = view.findViewById(R.id.textEventTime)
+        attendeeListView = view.findViewById(R.id.attendee_list)
+
+        val eventId = arguments?.getInt("eventId") ?: -1
+        val event = dbHelper.getEventDetails(eventId)
+        if (event != null) {
+            textEventName.text = event.name
+            textEventDescription.text = event.description
+            textEventLocation.text = event.location
+            textEventTime.text = event.time
+            displayAttendees(eventId)
+        }
+
+        return view
+    }
+
+    private fun displayAttendees(eventId: Int) {
+        val attendees = dbHelper.getAttendeesForEvent(eventId)
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, attendees)
+        attendeeListView.adapter = adapter
+    }
+}
+
+Note: Make sure to update the dbHelper class to include the getAttendeesForEvent method.
