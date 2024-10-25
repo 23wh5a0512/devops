@@ -1,0 +1,5 @@
+git stages:
+working directory
+staging
+local repository
+remote repository

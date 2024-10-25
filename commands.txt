@@ -1,0 +1,8 @@
+git merge
+git commit
+git checkout
+git reset
+git status
+git add
+git pull
+git add filename
